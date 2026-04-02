@@ -77,9 +77,9 @@ void bmi160_task(void *pvParameters)
     //hook isr handler for specific gpio pin
     gpio_isr_handler_add(CONFIG_EXAMPLE_INT1_GPIO, isr_new_data, NULL);
 #endif
-    ESP_LOGI(TAG, "Example for step counter\n");
+    ESP_LOGI(TAG, "Example for step counter");
 
-    ESP_LOGI(TAG, "Initializing BMI160\n");
+    ESP_LOGI(TAG, "Initializing BMI160");
     ESP_ERROR_CHECK(bmi160_init(&bmi160_dev, BMI160_I2C_ADDRESS_VDD, I2C_PORT, CONFIG_EXAMPLE_SDA_GPIO, CONFIG_EXAMPLE_SCL_GPIO));
 
     ESP_ERROR_CHECK(bmi160_self_test(&bmi160_dev));
@@ -87,13 +87,13 @@ void bmi160_task(void *pvParameters)
     bmi160_conf_t bmi160_conf =
     {
         .accRange = BMI160_ACC_RANGE_2G,
-        .accOdr = BMI160_ACC_ODR_1_56HZ,
-        .accAvg = BMI160_ACC_LP_AVG_8,
+        .accOdr = BMI160_ACC_ODR_12_5HZ,
+        .accAvg = BMI160_ACC_LP_AVG_4,
         .accMode = BMI160_PMU_ACC_LOW_POWER,
         .gyrRange = BMI160_GYR_RANGE_125DPS,
         .gyrOdr = BMI160_GYR_ODR_100HZ,
         .gyrMode = BMI160_PMU_GYR_SUSPEND,
-        .accUs = 1u
+        .accUs = BMI160_ACC_US_ON
     };
 
     ESP_ERROR_CHECK(bmi160_start(&bmi160_dev, &bmi160_conf));
@@ -128,7 +128,7 @@ void bmi160_task(void *pvParameters)
         esp_err_t ret = bmi160_read_step_counter(&bmi160_dev, &step_count);
         if (ret == ESP_OK)
         {
-            ESP_LOGI(TAG, "Step count: %d\n", step_count);
+            ESP_LOGI(TAG, "Step count: %d", step_count);
         }
 
         //go back to low power mode
