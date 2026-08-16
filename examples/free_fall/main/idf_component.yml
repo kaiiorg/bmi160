@@ -1,0 +1,7 @@
+version: 1.0.0
+description: free_fall_detection
+dependencies:
+  esp-idf-lib/bmi160:
+    version: '*'
+    override_path: ../../../
+  esp-idf-lib/i2cdev: '*'
