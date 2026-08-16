@@ -53,6 +53,7 @@ static esp_err_t is_gyr_odr_valid(bmi160_gyr_odr_t odr);
 static esp_err_t is_conf_valid(const bmi160_conf_t* const conf);
 static esp_err_t is_int_out_conf_valid(const bmi160_int_out_conf_t* const intOutConf);
 static esp_err_t is_tap_conf_valid(const bmi160_tap_conf_t* const tapConf);
+static esp_err_t is_freefall_conf_valid(const bmi160_free_fall_conf_t* const freeFallConf);
 static esp_err_t bmi160_read_reg_internal(bmi160_t *dev, uint8_t reg, uint8_t *val);
 static esp_err_t bmi160_read_reg_array_internal(bmi160_t *dev, uint8_t reg, uint8_t *val, uint8_t num);
 static esp_err_t bmi160_write_reg_internal(bmi160_t *dev, uint8_t reg, uint8_t val);
@@ -631,6 +632,49 @@ esp_err_t bmi160_read_tap_orient(bmi160_t *dev, uint8_t *orient)
     return ESP_OK;
 }
 
+esp_err_t bmi160_enable_free_fall_detection(bmi160_t *dev, const bmi160_free_fall_conf_t* const freeFallConf)
+{
+    CHECK_ARG(dev && freeFallConf);
+    //validate parameters
+    CHECK_LOGE(is_freefall_conf_valid(freeFallConf), "Invalid freeFallConf");
+
+    I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
+    I2C_DEV_CHECK_LOGE(&dev->i2c_dev, bmi160_write_reg_internal(dev, BMI160_INT_LOWHIGH_0, (uint8_t)(freeFallConf->freeFallDur)), "Write int low high 0 failed");
+    I2C_DEV_CHECK_LOGE(&dev->i2c_dev, bmi160_write_reg_internal(dev, BMI160_INT_LOWHIGH_1, (uint8_t)(freeFallConf->freeFallTh)), "Write int low high 1 failed");
+
+    uint8_t data = 0;
+    I2C_DEV_CHECK_LOGE(&dev->i2c_dev, bmi160_read_reg_internal(dev, BMI160_INT_LOWHIGH_2, &data), "Read int low high 2 failed");
+    data |= (uint8_t)(freeFallConf->freeFallDur);
+    I2C_DEV_CHECK_LOGE(&dev->i2c_dev, bmi160_write_reg_internal(dev, BMI160_INT_LOWHIGH_2, data), "Write int low high 2 failed");
+    I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
+
+    return ESP_OK;
+}
+
+esp_err_t bmi160_enable_int_free_fall(bmi160_t *dev, const bmi160_int_out_conf_t* const intOutConf) {
+    CHECK_ARG(dev && intOutConf);
+
+    CHECK_LOGE(is_int_out_conf_valid(intOutConf), "Invalid intOutConf");
+
+    I2C_DEV_TAKE_MUTEX(&dev->i2c_dev);
+    //configure interrupt output
+    I2C_DEV_CHECK_LOGE(&dev->i2c_dev, bmi160_int_config(dev, intOutConf), "Config in_out_ctrl failed");
+
+    uint8_t reg = intOutConf->intPin == BMI160_PIN_INT1 ? BMI160_INT_MAP_0 : BMI160_INT_MAP_2;
+    uint8_t data = 0;
+    I2C_DEV_CHECK_LOGE(&dev->i2c_dev, bmi160_read_reg_internal(dev, reg, &data), "Read int map failed");
+    data |= 1u;
+    I2C_DEV_CHECK_LOGE(&dev->i2c_dev, bmi160_write_reg_internal(dev, reg, data), "Write int map failed");
+
+    //enable interrupt
+    uint8_t mask = (1u << 4);
+    I2C_DEV_CHECK_LOGE(&dev->i2c_dev, bmi160_int_en(dev, BMI160_INT_EN_1, mask), "Enable interrupt flag failed"); // enable tap interrupt
+
+    I2C_DEV_GIVE_MUTEX(&dev->i2c_dev);
+
+    return ESP_OK;
+}
+
 /* Local functions */
 
 /**
@@ -1136,6 +1180,32 @@ static esp_err_t is_tap_conf_valid(const bmi160_tap_conf_t* const tapConf)
     if (!((tapConf->tapMode >= BMI160_TAP_MODE_SINGLE) && (tapConf->tapMode <= BMI160_TAP_MODE_DOUBLE)))
     {
         ESP_LOGD(TAG, "Invalid tap mode");
+        return ESP_FAIL;
+    }
+    return ESP_OK;
+}
+
+/**
+ * @brief Internal function to validate the free-fall detection configuration
+ *
+ * @param freeFallConf Pointer to the free-fall detection configuration structure to validate
+ *
+ * @return esp_err_t ESP_OK if the configuration is valid, or an error code if it is invalid
+ */
+static esp_err_t is_freefall_conf_valid(const bmi160_free_fall_conf_t* const freeFallConf) {
+    if (!((freeFallConf->freeFallTh >= BMI160_FREE_FALL_TH_0_00391G) && (freeFallConf->freeFallTh <= BMI160_FREE_FALL_TH_2G)))
+    {
+        ESP_LOGD(TAG, "Invalid freefall threshold");
+        return ESP_FAIL;
+    }
+    if (!((freeFallConf->freeFallHy >= BMI160_FREE_FALL_HY_0G) && (freeFallConf->freeFallHy <= BMI160_FREE_FALL_HY_0_375G)))
+    {
+        ESP_LOGD(TAG, "Invalid freefall hysteresis");
+        return ESP_FAIL;
+    }
+    if (!((freeFallConf->freeFallDur >= BMI160_FREE_FALL_DUR_2_5MS) && (freeFallConf->freeFallDur <= BMI160_FREE_FALL_DUR_640MS)))
+    {
+        ESP_LOGD(TAG, "Invalid freefall trigger reset delay");
         return ESP_FAIL;
     }
     return ESP_OK;

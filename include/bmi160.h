@@ -270,6 +270,47 @@ typedef enum
 } bmi160_tap_th_t;
 
 /**
+ * @brief free fall threshold
+ *
+ * @note a custom threashold can be calculated by multiplying any uint8_t by BMI160_FREE_FALL_TH_0_00781G to get a multiple of 0.00781g, up to ~2G
+ */
+typedef enum
+{
+    BMI160_FREE_FALL_TH_0_00391G = 0u, ///< 0.00391g
+    BMI160_FREE_FALL_TH_0_00781G = 1u,  ///< 0.00781g
+    BMI160_FREE_FALL_TH_0_0625G = 8 * BMI160_FREE_FALL_TH_0_00781G, ///< 0.0625g
+    BMI160_FREE_FALL_TH_0_125G = 16 * BMI160_FREE_FALL_TH_0_00781G, ///< 0.125g
+    BMI160_FREE_FALL_TH_0_25G = 32 * BMI160_FREE_FALL_TH_0_00781G, ///< 0.25g
+    BMI160_FREE_FALL_TH_0_500G = 64 * BMI160_FREE_FALL_TH_0_00781G, ///< 0.5g
+    BMI160_FREE_FALL_TH_1G = 128 * BMI160_FREE_FALL_TH_0_00781G, ///< 1g
+    BMI160_FREE_FALL_TH_2G = 254 * BMI160_FREE_FALL_TH_0_00781G ///< 2g
+} bmi160_free_fall_th_t;
+
+/**
+ * @brief free fall hysteresis
+ */
+typedef enum
+{
+    BMI160_FREE_FALL_HY_0G = 0x00u, ///< 0g
+    BMI160_FREE_FALL_HY_0_125G = 0x01u, ///< 0.125g
+    BMI160_FREE_FALL_HY_0_25G = 0x02u, ///< 0.25g
+    BMI160_FREE_FALL_HY_0_375G = 0x03u, ///< 0.375g
+} bmi160_free_fall_hy_t;
+
+/**
+ * @brief free fall trigger reset delay
+ * 
+ * @note a custom trigger delay can be calculated by multiplying any uint8_t by BMI160_FREE_FALL_DUR_2_5MS+1 (or BMI160_FREE_FALL_DUR_5MS) to get a multiple of 2.5ms, up to ~640ms
+ */
+typedef enum
+{
+    BMI160_FREE_FALL_DUR_2_5MS = 0x00u, ///< 2.5ms
+    BMI160_FREE_FALL_DUR_5MS = 0x01u, ///< 5ms
+    BMI160_FREE_FALL_DUR_20MS = 7 * BMI160_FREE_FALL_DUR_5MS, ///< 20ms; default at power on
+    BMI160_FREE_FALL_DUR_640MS = 254 * BMI160_FREE_FALL_DUR_5MS, ///< 640ms
+} bmi160_free_fall_dur_t;
+
+/**
  * @brief bmi160 configuration structure
  *
  */
@@ -323,6 +364,17 @@ typedef struct
     bmi160_tap_th_t tapTh; ///< Tap threshold
     bmi160_tap_mode_t tapMode; ///< Tap mode
 } bmi160_tap_conf_t;
+
+/**
+ * @brief free-fall configuration
+ *
+ */
+typedef struct
+{
+    bmi160_free_fall_th_t freeFallTh; ///< Free-fall threshold
+    bmi160_free_fall_hy_t freeFallHy; ///< Free-fall hysteresis
+    bmi160_free_fall_dur_t freeFallDur; ///< Free-fall trigger reset delay
+} bmi160_free_fall_conf_t;
 
 /**
  *  Device descriptor
@@ -558,6 +610,27 @@ esp_err_t bmi160_enable_int_tap(bmi160_t *dev, const bmi160_int_out_conf_t* cons
  * @return esp_err_t ESP_OK if success
  */
 esp_err_t bmi160_read_tap_orient(bmi160_t *dev, uint8_t *orient);
+
+/**
+ * @brief configure free fall detection
+ *
+ * @param dev Pointer to the device descriptor
+ * @param freeFallConf Pointer to the configuration structure
+ *
+ * @return esp_err_t ESP_OK if success
+ */
+esp_err_t bmi160_enable_free_fall_detection(bmi160_t *dev, const bmi160_free_fall_conf_t* const freeFallConf);
+
+/**
+ * @brief Enable interrupt for the BMI160 for free fall detection
+ *
+ * @param dev Pointer to the device descriptor
+ * @param intOutConf Interrupt out configuration
+ *
+ * @return esp_err_t ESP_OK if success
+ *
+ */
+esp_err_t bmi160_enable_int_free_fall(bmi160_t *dev, const bmi160_int_out_conf_t* const intOutConf);
 
 #ifdef __cplusplus
 }
